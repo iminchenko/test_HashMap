@@ -16,8 +16,8 @@ class HashMap {
         bool deleted;
         T value;
 
-        Item(int key, T value)
-        :key(key), deleted(false), value(std::move(value)) {}
+        Item(int key_, T value_)
+        :key(key_), deleted(false), value(std::move(value_)) {}
     };
 
 public:
@@ -32,6 +32,10 @@ public:
     }
 
     HashMap &operator=(const HashMap &hm) {
+        if (this == &hm) {
+            return *this;
+        }
+
         std::lock_guard guard(hm._mutex);
 
         _size = hm._size;
@@ -41,7 +45,7 @@ public:
         return *this;
     }
 
-    HashMap &operator=(HashMap &&hm) {
+    HashMap &operator=(HashMap &&hm) noexcept {
         std::lock_guard guard(hm._mutex);
 
         _size = hm._size;
