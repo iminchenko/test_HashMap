@@ -34,7 +34,8 @@ public:
             return *this;
         }
 
-        std::lock_guard guard(hm._mutex);
+        std::lock_guard guard1(_mutex);
+        std::lock_guard guard2(hm._mutex);
 
         _size = hm._size;
         _filled = hm._filled;
@@ -46,7 +47,8 @@ public:
     }
 
     HashMap &operator=(HashMap &&hm) noexcept {
-        std::lock_guard guard(hm._mutex);
+        std::lock_guard guard1(_mutex);
+        std::lock_guard guard2(hm._mutex);
 
         _size = hm._size;
         hm._size = 0;
@@ -106,6 +108,8 @@ public:
     }
 
     void erase(int key) {
+        std::lock_guard guard(_mutex);
+
         size_t id = find(key);
 
         if (id == NO_ID || !_data[id].has_value()) {
@@ -133,7 +137,7 @@ public:
     }
 
 private:
-    HashMap(size_t size): _size(0), _filled(0), _data(size), _deleted(size), _fixedSize(false) {}
+    explicit HashMap(size_t size): _data(size), _deleted(size), _size(0), _filled(0), _fixedSize(false) {}
 
     size_t hash(int key) const {
         return key % _data.size();
@@ -202,15 +206,16 @@ private:
             }
         }
 
-        *this = std::move(newMap);
-
-        _fixedSize = false;
+        _size = newMap._size;
+        _filled = newMap._filled;
+        _data = std::move(newMap._data);
+        _deleted = std::move(newMap._deleted);
     }
 
     std::vector<std::optional<Item>> _data;
     std::vector<bool> _deleted;
     size_t _size;           // количество валидных элементов
     size_t _filled;         // количество заполненных элементов (включая deleted == true)
-    std::mutex _mutex;
+    mutable std::mutex _mutex;
     bool _fixedSize;
 };
