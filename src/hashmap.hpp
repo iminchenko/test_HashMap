@@ -13,15 +13,13 @@ class HashMap {
 
     struct Item {
         int key;
-        bool deleted;
         T value;
 
-        Item(int key_, T value_)
-        :key(key_), deleted(false), value(std::move(value_)) {}
+        Item(int key_, T value_): key(key_), value(std::move(value_)) {}
     };
 
 public:
-    HashMap() :_size(0), _filled(0) {};
+    HashMap() :_size(0), _filled(0), _fixedSize(false) {};
 
     HashMap(const HashMap &hm) {
         *this = hm;
@@ -40,7 +38,9 @@ public:
 
         _size = hm._size;
         _filled = hm._filled;
+        _fixedSize = hm._fixedSize;
         _data = hm._data;
+        _deleted = hm._deleted;
 
         return *this;
     }
@@ -54,7 +54,11 @@ public:
         _filled = hm._filled;
         hm._filled = 0;
 
+        _fixedSize = hm._fixedSize;
+        hm._fixedSize = false;
+
         _data = std::move(hm._data);
+        _deleted = std::move(hm._deleted);
 
         return *this;
     }
@@ -62,7 +66,7 @@ public:
     const T &operator[](int key) const {
         size_t id = find(key);
 
-        if (id == NO_ID || _data[id]->key != key) {
+        if (id == NO_ID || !_data[id].has_value()) {
             throw std::logic_error("Not valid key");
         }
 
@@ -72,7 +76,7 @@ public:
     T &operator[](int key) {
         size_t id = find(key);
 
-        if (id == NO_ID || _data[id]->key != key) {
+        if (id == NO_ID || !_data[id].has_value()) {
             insert(key, T());
             id = find(key);
         }
@@ -101,6 +105,19 @@ public:
         ++_filled;
     }
 
+    void erase(int key) {
+        size_t id = find(key);
+
+        if (id == NO_ID || !_data[id].has_value()) {
+            throw std::logic_error("Not valid key");
+        }
+
+        _deleted[id] = true;
+        _data[id].reset();
+
+        --_size;
+    }
+
     size_t size() const {
         return _size;
     }
@@ -109,7 +126,15 @@ public:
         return _size == 0;
     }
 
+    bool contains(int key) {
+        size_t id = find(key);
+
+        return id != NO_ID && _data[id].has_value();
+    }
+
 private:
+    HashMap(size_t size): _size(0), _filled(0), _data(size), _deleted(size), _fixedSize(false) {}
+
     size_t hash(int key) const {
         return key % _data.size();
     }
@@ -135,7 +160,7 @@ private:
         do {
             const auto &item = _data[h];
 
-            if (!item.has_value() || (!item->deleted && item->key == key)) {
+            if (!_deleted[h] && (!item.has_value() || item->key == key)) {
                 return h;
             }
 
@@ -153,34 +178,39 @@ private:
     // если валидных элементов < 1/4, уменьшение размера в 2 раза
     // если map заполнен, увеличение в 2 раза
     void resize() {
-        if (_data.size() == 0) {
-            _data.resize(1);
+        if (_fixedSize) {
             return;
         }
 
-        HashMap<T> newMap;
+        size_t newSize;
 
-        if (_size < _data.size() / 4) {
-            newMap._data.resize(_data.size() / 4);
+        if (_data.size() == 0) {
+            newSize = 1;
+        } else if (_size < _data.size() / 4) {
+            newSize = std::min(_data.size() / 2, size_t(1));
         } else if (_filled == _data.size()) {
-            newMap._data.resize(_data.size() * 2);
+            newSize = _data.size() * 2;
         } else {
             return;
         }
 
-        for (const auto &i : _data) {
-            if (!i->deleted) {
-                newMap.insert(i->key, i->value);
+        HashMap<T> newMap(newSize);
+
+        for (size_t i = 0; i < _data.size(); ++i) {
+            if (!_deleted[i]) {
+                newMap.insert(_data[i]->key, _data[i]->value);
             }
         }
 
-        _size = newMap._size;
-        _filled = newMap._filled;
-        _data = std::move(newMap._data);
+        *this = std::move(newMap);
+
+        _fixedSize = false;
     }
 
     std::vector<std::optional<Item>> _data;
+    std::vector<bool> _deleted;
     size_t _size;           // количество валидных элементов
     size_t _filled;         // количество заполненных элементов (включая deleted == true)
     std::mutex _mutex;
+    bool _fixedSize;
 };
