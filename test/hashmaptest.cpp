@@ -186,3 +186,24 @@ TEST(deletion, deleteN2) {
 
     ASSERT_EQ(h.size(), 0);
 }
+
+TEST(copying, addOneAndCopy) {
+    HashMap<int> h1;
+
+    h1.insert(1, 1);
+
+    HashMap<int> h2 = h1;
+
+    ASSERT_EQ(h2[1], 1);
+}
+
+TEST(copying, addOneAndMove) {
+    HashMap<int> h1;
+
+    h1.insert(1, 1);
+
+    HashMap<int> h2 = h1;
+
+    ASSERT_EQ(h1[1], 1);
+    ASSERT_EQ(h1[1], 1);
+}
