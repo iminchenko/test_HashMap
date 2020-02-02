@@ -86,27 +86,3 @@ TEST(insertion, insertNMultythreadFunc) {
         ASSERT_EQ(h[i], i) << i;
     }
 }
-
-TEST(insertion, insertNMultythreadOperator) {
-    HashMap<int> h;
-
-    std::thread t1([&h](){
-        for (size_t i = 0; i < N; ++i) {
-            h[i] = i;
-        }
-    });
-    std::thread t2([&h](){
-        for (size_t i = 0; i < N; ++i) {
-            h[i + N] = i + N;
-        }
-    });
-
-    t1.join();
-    t2.join();
-
-    ASSERT_EQ(h.size(), 2 * N);
-
-    for (size_t i = 0; i < 2 * N; ++i) {
-        ASSERT_EQ(h[i], i) << i;
-    }
-}
