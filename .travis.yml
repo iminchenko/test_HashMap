@@ -1,0 +1,27 @@
+sudo: true
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env:
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
+        - COMPILER_FLAGS="-DCMAKE_CXX_FLAGS=-Wall -Wextra -Wshadow"
+        - EXTRA_FLAGS=""
+
+install:
+  - git submodule init
+
+script:
+  - eval "${MATRIX_EVAL}"
+  - mkdir build
+  - cd build
+  - cmake "${COMPILER_FLAGS}" ${EXTRA_FLAGS} ../
+  - make -j2 -k
+  - ./test_HashMap
